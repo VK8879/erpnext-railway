@@ -1,2 +1,1 @@
-FROM php:8.2-apache
-COPY . /var/www/html/
+web: cd frappe-bench && bench start --production
