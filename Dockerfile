@@ -24,7 +24,7 @@ RUN apt-get update \
 RUN pip3 install --upgrade pip setuptools wheel
 
 # 3) Install Bench CLI (pin to last release compatible with Click 8.1.8)
-RUN pip3 install frappe-bench==5.24.0
+RUN pip3 install frappe-bench==5.24.1
 
 # 4) Create frappe system user and working directory
 RUN useradd --create-home --shell /bin/bash $FRAPPE_USER \
@@ -45,4 +45,9 @@ RUN bench init --frappe-branch version-14 frappe-bench \
        --db-root-password $MYSQLPASSWORD \
        --db-name $MYSQLDATABASE \
        --admin-password $ADMIN_PASSWORD \
-  && bench get-app erpnex
+  && bench get-app erpnext https://github.com/frappe/erpnext --branch version-14 \
+  && bench --site $SITE_NAME install-app erpnext
+
+# 6) Expose HTTP port and start in production mode
+EXPOSE 8000
+CMD ["bash", "-lc", "cd frappe-bench && bench start --production"]
