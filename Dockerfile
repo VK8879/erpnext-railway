@@ -2,10 +2,10 @@ FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG FRAPPE_USER=frappe
-ARG ADMIN_PASSWORD=admin123
-ARG SITE_NAME=erp.gumite.com
+ARG ADMIN_PASSWORD=admin123      # override via Railway Variables if you like
+ARG SITE_NAME=erp.gumite.com     # override via Railway Variables
 
-# 1) System deps (no in-container MariaDB server)
+# 1) Install only client tools (no in-container DB server)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         wget git curl \
@@ -15,13 +15,13 @@ RUN apt-get update \
         redis-server \
     && rm -rf /var/lib/apt/lists/*
 
-# 2) Ensure pip can see click 8.2.0
+# 2) Upgrade pip so click-8.2.0 is resolvable
 RUN pip3 install --upgrade pip setuptools wheel
 
-# 3) Bench CLI + click
+# 3) Install bench CLI + correct click version
 RUN pip3 install frappe-bench click~=8.2.0
 
-# 4) Create frappe user
+# 4) Create frappe system user
 RUN useradd --create-home --shell /bin/bash $FRAPPE_USER \
     && mkdir -p /home/$FRAPPE_USER/frappe-bench \
     && chown -R $FRAPPE_USER:$FRAPPE_USER /home/$FRAPPE_USER
@@ -29,7 +29,7 @@ RUN useradd --create-home --shell /bin/bash $FRAPPE_USER \
 USER $FRAPPE_USER
 WORKDIR /home/$FRAPPE_USER
 
-# 5) Init bench, create site, install ERPNext
+# 5) Initialize bench, create site & install ERPNext v14
 RUN bench init --frappe-branch version-14 frappe-bench \
     && cd frappe-bench \
     && bench new-site $SITE_NAME \
