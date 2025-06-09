@@ -5,12 +5,12 @@
 FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Override these via Railway “Variables” if desired
+# Override these via Railway Variables if you like
 ARG FRAPPE_USER=frappe
 ARG ADMIN_PASSWORD=admin123
 ARG SITE_NAME=erp.gumite.com
 
-# 1) Install system dependencies (no in-container DB server)
+# 1) System deps (no in-container DB server)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        wget git curl \
@@ -20,13 +20,13 @@ RUN apt-get update \
        redis-server \
   && rm -rf /var/lib/apt/lists/*
 
-# 2) Upgrade pip so it can resolve needed dependencies
+# 2) Upgrade pip so it sees all modern packages
 RUN pip3 install --upgrade pip setuptools wheel
 
-# 3) Install Bench CLI (pin to last release compatible with Click 8.1.8)
+# 3) Install Bench CLI (compatible with Click 8.1.8)
 RUN pip3 install frappe-bench==5.24.1
 
-# 4) Create frappe system user and working directory
+# 4) Create frappe user & home
 RUN useradd --create-home --shell /bin/bash $FRAPPE_USER \
   && mkdir -p /home/$FRAPPE_USER/frappe-bench \
   && chown -R $FRAPPE_USER:$FRAPPE_USER /home/$FRAPPE_USER
@@ -34,20 +34,10 @@ RUN useradd --create-home --shell /bin/bash $FRAPPE_USER \
 USER $FRAPPE_USER
 WORKDIR /home/$FRAPPE_USER
 
-# 5) Initialize bench, create site & install ERPNext v14
-RUN bench init --frappe-branch version-14 frappe-bench \
-  && cd frappe-bench \
-  && bench new-site $SITE_NAME \
-       --db-type mariadb \
-       --db-host $MYSQLHOST \
-       --db-port $MYSQLPORT \
-       --db-root-username $MYSQLUSER \
-       --db-root-password $MYSQLPASSWORD \
-       --db-name $MYSQLDATABASE \
-       --admin-password $ADMIN_PASSWORD \
-  && bench get-app erpnext https://github.com/frappe/erpnext --branch version-14 \
-  && bench --site $SITE_NAME install-app erpnext
+# 5) Initialize bench (only once) 
+RUN bench init --frappe-branch version-14 frappe-bench
 
-# 6) Expose HTTP port and start in production mode
-EXPOSE 8000
-CMD ["bash", "-lc", "cd frappe-bench && bench start --production"]
+# 6) Switch into the bench folder to create the site and install ERPNext
+WORKDIR /home/$FRAPPE_USER/frappe-bench
+
+RUN bench new-site $SITE_NAME \
